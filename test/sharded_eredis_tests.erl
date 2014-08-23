@@ -7,6 +7,16 @@
 -define(Setup, fun() -> application:start(sharded_eredis)  end).
 -define(Cleanup, fun(_) -> application:stop(sharded_eredis)  end).
 
+qset(Key, Val) ->
+    sharded_eredis:q(["SET", Key, Val]).
+qget(Key) ->
+    sharded_eredis:q(["GET", Key]).
+qdel(Keys) when is_list(Keys) ->
+    sharded_eredis:q(["DEL"|Keys]);
+qdel(Key) ->
+    sharded_eredis:q(["DEL", Key]).
+
+
 basic_test_() ->
     {inparallel,
 
@@ -15,33 +25,21 @@ basic_test_() ->
 
        { "get and set",
          fun() ->
-                 ?assertMatch({ok, _}, sharded_eredis:q(["DEL", foo1])),
-
-                 ?assertEqual({ok, undefined}, 
-                              sharded_eredis:q(["GET", foo1])),
-
-                 ?assertEqual({ok, <<"OK">>}, 
-                              sharded_eredis:q(["SET", foo1, bar])),
-
-                 ?assertEqual({ok, <<"bar">>}, 
-                              sharded_eredis:q(["GET", foo1]))
+                 ?assertMatch({ok, _}, qdel(foo1)),
+                 ?assertEqual({ok, undefined}, qget(foo1)),
+                 ?assertEqual({ok, <<"OK">>}, qset(foo1, bar)),
+                 ?assertEqual({ok, <<"bar">>}, qget(foo1))
          end
-        },
+       },
 
        { "delete test",
          fun() ->
-                 ?assertMatch({ok, _}, sharded_eredis:q(["DEL", foo2])),
-
-                 ?assertEqual({ok, <<"OK">>}, 
-                              sharded_eredis:q(["SET", foo2, bar])),
-
-                 ?assertEqual({ok, <<"1">>}, 
-                              sharded_eredis:q(["DEL", foo2])),
-
-                 ?assertEqual({ok, undefined}, 
-                              sharded_eredis:q(["GET", foo2]))
+                 ?assertMatch({ok, _}, qdel(foo2)),
+                 ?assertEqual({ok, <<"OK">>}, qset(foo2, bar)),
+                 ?assertEqual({ok, <<"1">>}, qdel(foo2)),
+                 ?assertEqual({ok, undefined}, qget(foo2))
          end
-        }
+       }
 
       ]
      }
