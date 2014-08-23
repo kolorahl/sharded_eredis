@@ -23,15 +23,15 @@ start() ->
 stop() ->
     application:stop(?MODULE).
 
+-type q_result() :: {ok, binary() | [binary()]} | {error, Reason::binary()}.
+
 %% @doc Query the redis server using eredis. Automatically hashes
 %% the key and selects the correct shard
--spec q(Command::iolist()) ->
-    {ok, binary() | [binary()]} | {error, Reason::binary()}.
+-spec q(Command::iolist()) -> q_result().
 q(Command) ->
     q(Command, ?TIMEOUT).
 
--spec q(Command::iolist(), Timeout::integer()) ->
-    {ok, binary() | [binary()]} | {error, Reason::binary()}.
+-spec q(Command::iolist(), Timeout::integer()) -> q_result().
 q(Command = [_, Key|_], Timeout) ->
     Node = sharded_eredis_chash:lookup(Key),
     poolboy:transaction(Node, fun(Worker) ->
@@ -58,13 +58,11 @@ transaction(Key, Fun) when is_function(Fun) ->
     poolboy:transaction(Node, F).    
 
 %% @doc q2 is similar to q but allows the user to specify the node
--spec q2(Node::term(), Command::iolist()) ->
-    {ok, binary() | [binary()]} | {error, Reason::binary()}.
+-spec q2(Node::term(), Command::iolist()) -> q_result().
 q2(Node, Command) ->
     q2(Node, Command, ?TIMEOUT).
 
--spec q2(Node::term(), Command::iolist(), Timeout::integer()) ->
-    {ok, binary() | [binary()]} | {error, Reason::binary()}.
+-spec q2(Node::term(), Command::iolist(), Timeout::integer()) -> q_result().
 q2(Node, Command, Timeout) ->
     poolboy:transaction(Node, fun(Worker) ->
                                       eredis:q(Worker, Command, Timeout)
