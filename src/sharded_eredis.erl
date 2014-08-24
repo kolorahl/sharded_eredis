@@ -5,6 +5,9 @@
 
 -module(sharded_eredis).
 
+%% Do not auto-import certain BIFs that could cause naming conflicts
+-compile({no_auto_import,[get/1]}).
+
 %% Include
 -include_lib("eunit/include/eunit.hrl").
 
@@ -16,6 +19,8 @@
 
 %% API
 -export([q/1, q/2, q2/2, q2/3, transaction/2]).
+
+-export([get/1, set/1, del/1]).
 
 start() ->
     application:start(?MODULE).
@@ -67,3 +72,68 @@ q2(Node, Command, Timeout) ->
     poolboy:transaction(Node, fun(Worker) ->
                                       eredis:q(Worker, Command, Timeout)
                               end).
+
+%% Perform a query and pass successful return values to the given converter
+%% function. Errors are returned without any conversion.
+perform_q(Query, Converter) ->
+    case q(Query) of
+        {ok, Value} ->
+            Converter(Value);
+        Error ->
+            Error
+    end.
+
+%% Alias to `perform_q/2`, where the converter function does no actual
+%% conversion and simply returns the result as-is.
+perform_q(Query) ->
+    perform_q(Query, fun(Value) -> Value end).
+
+%% Return a binary string representing the value of the given key, or the atom
+%% `undefined` if there is no such key.
+%%
+%% If retrieving a list of keys, return an array with tuple elements in the form
+%% of `{Key, Value}`. The return structure is essentially a proplist where the
+%% "key" of each tuple is the Redis key, and the "value" is the Redis value.
+%%
+%% Note: Using this function with a list of keys is less efficient than using
+%% the query (`q/1` and `q2/1`) functions **if** you know that all of your keys
+%% are on the same node. If you know they exist on separate nodes, or are unsure
+%% if they do, then this function is safer but slower.
+get(Keys) when is_list(Keys) ->
+    get_keys(Keys, []);
+get(Key) ->
+    perform_q(["GET", Key]).
+
+%% Return the atom `ok` if the operation was successful, otherwise return an
+%% error tuple.
+set({Key, Value}) ->
+    perform_q(["SET", Key, Value], fun(<<"OK">>) -> ok end).
+
+%% Return an integer representing the number of keys/values that were deleted.
+%%
+%% Note: Using this function with a list of keys is less efficient than using
+%% the query (`q/1` and `q2/1`) functions **if** you know that all of your keys
+%% are on the same node. If you know they exist on separate nodes, or are unsure
+%% if they do, then this function is safer but slower.
+del(Keys) when is_list(Keys) ->
+    del_keys(Keys, 0);
+del(Key) ->
+    perform_q(["DEL", Key], fun(Count) -> binary_to_integer(Count) end).
+
+%% Used to get a set of keys in a single function call.
+get_keys([], Acc) ->
+    Acc;
+get_keys([Key|Keys], Acc) ->
+    Val = get(Key),
+    get_keys(Keys, [{Key, Val}|Acc]).
+
+%% Used to delete a set of keys in a single function call.
+del_keys([], Count) ->
+    Count;
+del_keys([Key|Keys], Count) ->
+    case del(Key) of
+        X when is_integer(X) ->
+            del_keys(Keys, Count + X);
+        _ ->
+            del_keys(Keys, Count)
+    end.
