@@ -90,7 +90,12 @@ perform_q(Query) ->
 
 %% Return a binary string representing the value of the given key, or the atom
 %% `undefined` if there is no such key.
-%%
+get(KeyParts) when is_list(KeyParts) ->
+    Key = create_key(KeyParts),
+    get(Key);
+get(Key) ->
+    perform_q(["GET", Key]).
+
 %% If retrieving a list of keys, return an array with tuple elements in the form
 %% of `{Key, Value}`. The return structure is essentially a proplist where the
 %% "key" of each tuple is the Redis key, and the "value" is the Redis value.
@@ -99,13 +104,13 @@ perform_q(Query) ->
 %% the query (`q/1` and `q2/1`) functions **if** you know that all of your keys
 %% are on the same node. If you know they exist on separate nodes, or are unsure
 %% if they do, then this function is safer but slower.
-get(Keys) when is_list(Keys) ->
-    get_keys(Keys, []);
-get(Key) ->
-    perform_q(["GET", Key]).
+%%mget(Keys)
 
 %% Return the atom `ok` if the operation was successful, otherwise return an
 %% error tuple.
+set({KeyParts, Value}) when is_list(KeyParts) ->
+    Key = create_key(KeyParts),
+    set({Key, Value});
 set({Key, Value}) ->
     perform_q(["SET", Key, Value], fun(<<"OK">>) -> ok end).
 
@@ -120,12 +125,16 @@ del(Keys) when is_list(Keys) ->
 del(Key) ->
     perform_q(["DEL", Key], fun(Count) -> binary_to_integer(Count) end).
 
-%% Used to get a set of keys in a single function call.
-get_keys([], Acc) ->
-    Acc;
-get_keys([Key|Keys], Acc) ->
-    Val = get(Key),
-    get_keys(Keys, [{Key, Val}|Acc]).
+create_key([Part|Parts]) ->
+    lists:foldl(fun(X, Acc) ->
+                        B = to_bin(X),
+                        <<Acc/binary, ":", B/binary>>
+                end, to_bin(Part), Parts).
+
+to_bin(X) when is_atom(X) ->
+    atom_to_binary(X, utf8);
+to_bin(X) ->
+    iolist_to_binary(X).
 
 %% Used to delete a set of keys in a single function call.
 del_keys([], Count) ->
