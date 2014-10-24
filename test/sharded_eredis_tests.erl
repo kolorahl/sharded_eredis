@@ -45,9 +45,9 @@ basic_test_() ->
          fun() ->
                  ?assertMatch({ok, _}, qdel(foo3)),
                  ?assertEqual(undefined, sharded_eredis:get(foo3)),
-                 ?assertEqual(ok, sharded_eredis:set({foo3, bar})),
+                 ?assertEqual(ok, sharded_eredis:set(foo3, bar)),
                  ?assertEqual(<<"bar">>, sharded_eredis:get(foo3)),
-                 ?assertEqual(ok, sharded_eredis:set({[mfoo, mbar], baz})),
+                 ?assertEqual(ok, sharded_eredis:set([mfoo, mbar], baz)),
                  ?assertEqual(<<"baz">>, sharded_eredis:get([mfoo, mbar]))
          end
        },
@@ -55,7 +55,7 @@ basic_test_() ->
        { "(c) delete test",
          fun() ->
                  ?assertMatch({ok, _}, qdel(foo4)),
-                 ?assertEqual(ok, sharded_eredis:set({foo4, bar})),
+                 ?assertEqual(ok, sharded_eredis:set(foo4, bar)),
                  ?assertEqual(1, sharded_eredis:del(foo4)),
                  ?assertEqual(undefined, sharded_eredis:get(foo4))
          end

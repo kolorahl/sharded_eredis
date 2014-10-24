@@ -20,7 +20,10 @@
 %% API
 -export([q/1, q/2, q2/2, q2/3, transaction/2]).
 
--export([get/1, set/1, del/1]).
+%% Explicit API for common Redis commands.
+-export([get/1]).
+-export([set/2]).
+-export([del/1]).
 
 start() ->
     application:start(?MODULE).
@@ -96,22 +99,12 @@ get(KeyParts) when is_list(KeyParts) ->
 get(Key) ->
     perform_q(["GET", Key]).
 
-%% If retrieving a list of keys, return an array with tuple elements in the form
-%% of `{Key, Value}`. The return structure is essentially a proplist where the
-%% "key" of each tuple is the Redis key, and the "value" is the Redis value.
-%%
-%% Note: Using this function with a list of keys is less efficient than using
-%% the query (`q/1` and `q2/1`) functions **if** you know that all of your keys
-%% are on the same node. If you know they exist on separate nodes, or are unsure
-%% if they do, then this function is safer but slower.
-%%mget(Keys)
-
 %% Return the atom `ok` if the operation was successful, otherwise return an
 %% error tuple.
-set({KeyParts, Value}) when is_list(KeyParts) ->
+set(KeyParts, Value) when is_list(KeyParts) ->
     Key = create_key(KeyParts),
-    set({Key, Value});
-set({Key, Value}) ->
+    set(Key, Value);
+set(Key, Value) ->
     perform_q(["SET", Key, Value], fun(<<"OK">>) -> ok end).
 
 %% Return an integer representing the number of keys/values that were deleted.
