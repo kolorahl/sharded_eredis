@@ -58,18 +58,23 @@ basic_test_() ->
                  ?assertMatch({ok, _}, qdel(foo4)),
                  ?assertEqual(ok, sharded_eredis:set(foo4, bar)),
                  ?assertEqual(1, sharded_eredis:del(foo4)),
-                 ?assertEqual(undefined, sharded_eredis:get(foo4))
+                 ?assertEqual(undefined, sharded_eredis:get(foo4)),
+                 ?assertMatch({ok, _}, qdel(foo5)),
+                 ?assertMatch({ok, _}, qdel(foo6)),
+                 ?assertEqual(ok, sharded_eredis:set(foo5, bar)),
+                 ?assertEqual(ok, sharded_eredis:set(foo6, baz)),
+                 ?assertEqual(2, sharded_eredis:del([foo5, foo6]))
          end
        },
 
        { "(c) expire test",
          fun() ->
-                 ?assertMatch({ok, _}, qdel(foo5)),
-                 ?assertEqual(ok, sharded_eredis:set(foo5, bar)),
-                 ?assertEqual(1, sharded_eredis:expire(foo5, 1)),
-                 ?assertEqual(<<"bar">>, sharded_eredis:get(foo5)),
+                 ?assertMatch({ok, _}, qdel(foo7)),
+                 ?assertEqual(ok, sharded_eredis:set(foo7, bar)),
+                 ?assertEqual(1, sharded_eredis:expire(foo7, 1)),
+                 ?assertEqual(<<"bar">>, sharded_eredis:get(foo7)),
                  ok = timer:sleep(1000),
-                 ?assertEqual(undefined, sharded_eredis:get(foo5))
+                 ?assertEqual(undefined, sharded_eredis:get(foo7))
          end
        }
       ]

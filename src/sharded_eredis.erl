@@ -131,9 +131,10 @@ set(Key, Value) ->
 %% are on the same node. If you know they exist on separate nodes, or are unsure
 %% if they do, then this function is safer but slower.
 del(Keys) when is_list(Keys) ->
-    del_keys(Keys, 0);
+    Cmd = ["DEL" | Keys],
+    perform_q(Cmd, fun(Count) -> binary_to_integer(Count) end);
 del(Key) ->
-    perform_q(["DEL", Key], fun(Count) -> binary_to_integer(Count) end).
+    del([Key]).
 
 -spec expire(Key::term(), Seconds::pos_integer()) -> 0 | 1.
 %% Set a key to expire after some number of seconds. This updates any previous
@@ -150,14 +151,3 @@ to_bin(X) when is_atom(X) ->
     atom_to_binary(X, utf8);
 to_bin(X) ->
     iolist_to_binary(X).
-
-%% Used to delete a set of keys in a single function call.
-del_keys([], Count) ->
-    Count;
-del_keys([Key|Keys], Count) ->
-    case del(Key) of
-        X when is_integer(X) ->
-            del_keys(Keys, Count + X);
-        _ ->
-            del_keys(Keys, Count)
-    end.
