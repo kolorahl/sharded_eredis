@@ -24,6 +24,7 @@
 -export([get/1]).
 -export([set/2]).
 -export([del/1]).
+-export([expire/2]).
 
 start() ->
     application:start(?MODULE).
@@ -117,6 +118,15 @@ del(Keys) when is_list(Keys) ->
     del_keys(Keys, 0);
 del(Key) ->
     perform_q(["DEL", Key], fun(Count) -> binary_to_integer(Count) end).
+
+-spec expire(Key::term(), Seconds::pos_integer()) -> 0 | 1.
+%% Set a key to expire after some number of seconds. This updates any previous
+%% TTL and resets the expiration timer.
+expire(KeyParts, Seconds) when is_list(KeyParts) ->
+    Key = create_key(KeyParts),
+    expire(Key, Seconds);
+expire(Key, Seconds) when Seconds > 0 ->
+    perform_q(["EXPIRE", Key, Seconds], fun(X) -> binary_to_integer(X) end).
 
 create_key([Part|Parts]) ->
     lists:foldl(fun(X, Acc) ->

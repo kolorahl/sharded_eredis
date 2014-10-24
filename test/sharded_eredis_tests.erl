@@ -59,8 +59,18 @@ basic_test_() ->
                  ?assertEqual(1, sharded_eredis:del(foo4)),
                  ?assertEqual(undefined, sharded_eredis:get(foo4))
          end
-       }
+       },
 
+       { "(c) expire test",
+         fun() ->
+                 ?assertMatch({ok, _}, qdel(foo5)),
+                 ?assertEqual(ok, sharded_eredis:set(foo5, bar)),
+                 ?assertEqual(1, sharded_eredis:expire(foo5, 1)),
+                 ?assertEqual(<<"bar">>, sharded_eredis:get(foo5)),
+                 ok = timer:sleep(1000),
+                 ?assertEqual(undefined, sharded_eredis:get(foo5))
+         end
+       }
       ]
      }
     }.
