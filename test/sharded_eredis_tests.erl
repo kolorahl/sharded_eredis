@@ -54,7 +54,7 @@ basic_test_() ->
 
        { "(c) delete test",
          fun() ->
-                 ?assertMatch({ok, _}, qdel(foo3)),
+                 ?assertMatch({ok, _}, qdel(foo4)),
                  ?assertEqual(ok, sharded_eredis:set({foo4, bar})),
                  ?assertEqual(1, sharded_eredis:del(foo4)),
                  ?assertEqual(undefined, sharded_eredis:get(foo4))
