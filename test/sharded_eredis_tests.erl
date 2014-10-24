@@ -47,8 +47,9 @@ basic_test_() ->
                  ?assertEqual(undefined, sharded_eredis:get(foo3)),
                  ?assertEqual(ok, sharded_eredis:set(foo3, bar)),
                  ?assertEqual(<<"bar">>, sharded_eredis:get(foo3)),
-                 ?assertEqual(ok, sharded_eredis:set([mfoo, mbar], baz)),
-                 ?assertEqual(<<"baz">>, sharded_eredis:get([mfoo, mbar]))
+                 Key = sharded_eredis:create_key([mfoo, mbar]),
+                 ?assertEqual(ok, sharded_eredis:set(Key, baz)),
+                 ?assertEqual(<<"baz">>, sharded_eredis:get(Key))
          end
        },
 

@@ -20,6 +20,9 @@
 %% API
 -export([q/1, q/2, q2/2, q2/3, transaction/2]).
 
+%% Helper functions.
+-export([create_key/1]).
+
 %% Explicit API for common Redis commands.
 -export([get/1]).
 -export([set/2]).
@@ -92,21 +95,34 @@ perform_q(Query, Converter) ->
 perform_q(Query) ->
     perform_q(Query, fun(Value) -> Value end).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Helper functions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+-spec create_key(Parts::list()) -> binary().
+%% Creates a binary key for use with Redis based on a list of key parts. The
+%% parts are joined using a ":" (colon) separator.
+create_key([Part|Parts]) ->
+    lists:foldl(fun(X, Acc) ->
+                        B = to_bin(X),
+                        <<Acc/binary, ":", B/binary>>
+                end, to_bin(Part), Parts).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Common Commands API
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+-spec get(Key::binary()) -> binary().
 %% Return a binary string representing the value of the given key, or the atom
 %% `undefined` if there is no such key.
-get(KeyParts) when is_list(KeyParts) ->
-    Key = create_key(KeyParts),
-    get(Key);
 get(Key) ->
     perform_q(["GET", Key]).
 
+-spec set(Key::binary(), Value::term()) -> ok | {error, term()}.
 %% Return the atom `ok` if the operation was successful, otherwise return an
 %% error tuple.
-set(KeyParts, Value) when is_list(KeyParts) ->
-    Key = create_key(KeyParts),
-    set(Key, Value);
 set(Key, Value) ->
-    perform_q(["SET", Key, Value], fun(<<"OK">>) -> ok end).
+    perform_q(["SET", Key, Value], fun(<<"OK">>) -> ok; (Error) -> Error end).
 
 %% Return an integer representing the number of keys/values that were deleted.
 %%
@@ -128,12 +144,8 @@ expire(KeyParts, Seconds) when is_list(KeyParts) ->
 expire(Key, Seconds) when Seconds > 0 ->
     perform_q(["EXPIRE", Key, Seconds], fun(X) -> binary_to_integer(X) end).
 
-create_key([Part|Parts]) ->
-    lists:foldl(fun(X, Acc) ->
-                        B = to_bin(X),
-                        <<Acc/binary, ":", B/binary>>
-                end, to_bin(Part), Parts).
-
+-spec to_bin(X::(atom() | iolist())) -> binary().
+%% Converts an object to binary.
 to_bin(X) when is_atom(X) ->
     atom_to_binary(X, utf8);
 to_bin(X) ->
